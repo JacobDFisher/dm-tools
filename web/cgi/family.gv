@@ -1,0 +1,15 @@
+digraph family {
+  splines=line;
+  subgraph cluster_0 {
+    {rank=same; Robert, Kathleen}
+    label="Parents";
+    Robert -> Kathleen;
+    Kathleen -> Robert;
+  }
+  subgraph cluster_1 {
+    Jacob[href="http://www.google.com",fontcolor="blue",label=<<U>Jacob</U>>];
+    label="Children";
+    {rank=same; Noah, Jacob, Ben, Luke, Rachel}
+    {Kathleen Robert} -> {Noah Jacob Ben Luke Rachel}[color="blue"];
+  }
+}
