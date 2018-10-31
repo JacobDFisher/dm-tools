@@ -1,4 +1,4 @@
-from Relationship import Relationship, relTypes
+from Relationship import Relationship, relTypes, FamilialRelationship
 
 class Character(object):
     chars = dict()
@@ -80,27 +80,32 @@ h = Character('Harold')
 i = Character('Ingrid')
 j = Character('Jacob')
 
-Relationship('Spouse', a, b)
-Relationship('Spouse', b, a)
-Relationship('Child', a, c)
-Relationship('Child', b, c)
+FamilialRelationship('Spouse', a, b)
+FamilialRelationship('Spouse', b, a)
+FamilialRelationship('Child', a, c)
+FamilialRelationship('Child', b, c)
 
-Relationship('Spouse', d, e)
-Relationship('Spouse', e, d)
-Relationship('Child', d, f)
-Relationship('Child', e, f)
+FamilialRelationship('Spouse', d, e)
+FamilialRelationship('Spouse', e, d)
+FamilialRelationship('Child', d, f)
+FamilialRelationship('Child', e, f)
 
-Relationship('Spouse', c, f)
-Relationship('Spouse', f, c)
-Relationship('Child', c, g)
-Relationship('Child', f, g)
-Relationship('Child', c, h)
-Relationship('Child', f, h)
-Relationship('Sibling', g, h)
-Relationship('Sibling', h, g)
+FamilialRelationship('Spouse', c, f)
+FamilialRelationship('Spouse', f, c)
+FamilialRelationship('Child', c, g)
+FamilialRelationship('Child', f, g)
+FamilialRelationship('Child', c, h)
+FamilialRelationship('Child', f, h)
+FamilialRelationship('Sibling', g, h)
+FamilialRelationship('Sibling', h, g)
 
-Relationship('Child', e, i)
-Relationship('Child', d, i)
+FamilialRelationship('Child', e, i)
+FamilialRelationship('Child', d, i)
 
-Relationship('Sibling', f, i)
-Relationship('Sibling', i, f)
+FamilialRelationship('Sibling', f, i)
+FamilialRelationship('Sibling', i, f)
+
+Relationship((0,[]), 1, j, a)
+Relationship((-1,[]), 0.5, j, b)
+Relationship((1,[]), 1, j, c)
+Relationship((0,[]), 0.01, j, d)

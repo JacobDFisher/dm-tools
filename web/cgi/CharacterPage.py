@@ -38,7 +38,7 @@ def main():
         graphBytes = char.genGraph(maxDepth = int(form['maxDepth'].value))
     else:
         graphBytes = char.genGraph()
-    p = Popen(['circo', '-Tpng', '-o', '../img/'+graphBytes[0]+'.png', '-Tcmapx'], stdout=PIPE, stdin=PIPE, stderr=PIPE)
+    p = Popen(['fdp', '-Tpng', '-o', '../img/'+graphBytes[0]+'.png', '-Tcmapx'], stdout=PIPE, stdin=PIPE, stderr=PIPE)
     data = p.communicate(input=graphBytes[1])
     p.wait()
     print('<h2>'+str(char)+'</h2>')
