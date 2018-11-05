@@ -1,45 +1,105 @@
+import redis
 from Relationship import Relationship, relTypes, FamilialRelationship
 
 class Character(object):
     chars = dict()
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, Id=None, name=None, save=True):
+        r = redis.StrictRedis(host='localhost', port=6379, db=0)
+        if Id == None and name is not None:
+            Id = r.hget('name2Id:0', name)
+        if Id == None and name is not None:
+            with r.pipeline() as pipe:
+                while 1:
+                    try:
+                        pipe.watch('numChars:0')
+                        self.Id = int(pipe.get('numChars:0'))
+                        pipe.incr('numChars:0')
+                        pipe.execute()
+                        break
+                    except WatchError:
+                        continue
+                    finally:
+                        pipe.reset()
+            r.hset('character:0:'+str(self.Id), 'name', name)
+            r.hsetnx('name2Id:0', name, str(self.Id))
+        elif Id is not None:
+            self.Id = Id
+        else:
+            return
+        Character.chars[self.Id]=self
+        self.traits={}
+        if r.exists('character:0:'+str(self.Id)):
+            traits = r.hgetall('character:0:'+str(self.Id))
+            for trait in traits.keys():
+                self.traits[trait.decode('utf-8')] = traits[trait].decode('utf-8')
+        #Set up traits here
         self.relationships = {}
-        Character.chars[name]=self
-        self.traits=set()
+        if r.exists('relationships:0:'+str(self.Id)):
+            rels = r.smembers('relationships:0:'+str(self.Id))
+            for rel in rels:
+                myRels = {}
+                if r.exists('relationship:0:'+str(self.Id)+':'+str(int(rel))):
+                    relMems = r.hgetall('relationship:0:'+str(self.Id)+':'+str(int(rel)))
+                    for rMem in relMems.keys():
+                        myRels[rMem.decode('utf-8')] = float(relMems[rMem])
+                self.relationships[int(rel)] = Relationship(myRels, max(myRels.values()), self, Character.getById(int(rel)))
+        if save:
+            r.save()
 
     def __hash__(self):
-        return hash(self.name)
+        try:
+            return hash(self.traits['name'])
+        except:
+            return hash(self.Id)
 
     def __str__(self):
-        return self.name
-
-    def addRelation(self, other, relation):
         try:
-            reList = self.relationships[other]
+            return self.traits['name']
         except:
-            reList = []
-            self.relationships[other] = reList
-        reList.append(relation)
+            return str(self.Id)
 
-    def printRelations(self):
-        for rel in self.relationships:
-            for x in self.relationships[rel]:
-                print(x)
+    def addRelation(self, other, relation, recip=True):
+        r = redis.StrictRedis(host='localhost', port=6379, db=0)
+        r.sadd('relationships:0:'+str(self.Id), str(other.Id))
+        r.hmset('relationship:0:'+str(self.Id)+':'+str(other.Id), relation)
+        if other.Id in self.relationships:
+            for key in relation:
+                self.relationships[other.Id].rels[key] = relation[key]
+                if relation[key] > self.relationships[other.Id].importance:
+                    self.relationships[other.Id].importance = relation[key]
+        else:
+            self.relationships[other.Id] = Relationship(relation, max(relation.values()), self, other)
+        if recip:
+            for rel in relation:
+                try:
+                    relTypes[rel]['recip'](self, other)
+                except:
+                    continue
+
+    def getById(Id):
+        if Id in Character.chars:
+            return Character.chars[Id]
+        else:
+            return Character(Id)
+
+    def getByName(name):
+        r = redis.StrictRedis(host='localhost', port=6379, db=0)
+        Id = r.hget('name2Id:0', name)
+        return getCharById(Id)
 
     def genGraph(self, maxDepth = 1, URL='/cgi-bin/CharacterPage.py', target='_self'):
-        graphString = 'digraph '+self.name+'graph {\n\t{rank=same; '+self.name+' }\n'
-        graphString += '\t'+self.name+';\n'
+        graphString = 'digraph '+str(self)+'graph {\n\t{rank=same; '+str(self)+' }\n'
+        graphString += '\t'+str(self)+';\n'
         keys = self.relationships.keys()
-        charList = [set([self])]
-        charSet = set([self])
+        charList = [set([self.Id])]
+        charSet = set([self.Id])
         for i in range(1, maxDepth+1):
             nextKeys = set()
             charList.append(set())
             for key in keys:
                 charList[i].add(key)
                 #Check this
-                for k in key.relationships.keys():
+                for k in Character.getById(key).relationships.keys():
                     nextKeys.add(k)
             charList[i].difference_update(charSet)
             charSet.update(charList[i])
@@ -50,62 +110,67 @@ class Character(object):
                 first = charList[i].pop()
             except:
                 break
-            graphString+='\t{rank=same; '+first.name
+            graphString+='\t{rank=same; '+str(Character.getById(first))
             for val in charList[i]:
-                graphString+=', '+val.name
+                graphString+=', '+str(Character.getById(val))
             graphString+='}\n'
-            graphString+='\t'+first.name+';\n'
+            graphString+='\t'+str(Character.getById(first))+';\n'
             for val in charList[i]:
-                graphString+='\t'+val.name+';\n'
+                graphString+='\t'+str(Character.getById(val))+';\n'
         for char in charSet:
-            graphString+=str(char)+'[URL="'+URL+'?name='+str(char)+'", target="'+target+'"];'
-            for dest in char.relationships:
+            graphString+=str(Character.getById(char))+'[URL="'+URL+'?id='+str(char)+'", target="'+target+'"];\n'
+            for dest in Character.getById(char).relationships:
                 if dest in charSet:
-                    for rel in char.relationships[dest]:
-                        if rel.src == char:
-                            graphString+='\t'+rel.graphGet()+';\n'
+                    if Character.getById(char).relationships[dest].src == Character.getById(char):
+                        graphString+='\t'+Character.getById(char).relationships[dest].graphGet()+';\n'
         graphString+='}\n'
-        #print(graphString)
-        return (self.name+'graph', bytes(graphString, 'utf-8'))
+        return (str(self)+'graph', bytes(graphString, 'utf-8'))
         
 
-a = Character('Alice')
-b = Character('Bob')
-c = Character('Cait')
-d = Character('David')
-e = Character('Emily')
-f = Character('Francis')
-g = Character('Gertrude')
-h = Character('Harold')
-i = Character('Ingrid')
-j = Character('Jacob')
 
-FamilialRelationship('Spouse', a, b)
-FamilialRelationship('Spouse', b, a)
-FamilialRelationship('Child', a, c)
-FamilialRelationship('Child', b, c)
+def main():
+    a = Character('Alice')
+    b = Character('Bob')
+    c = Character('Cait')
+    d = Character('David')
+    e = Character('Emily')
+    f = Character('Francis')
+    g = Character('Gertrude')
+    h = Character('Harold')
+    i = Character('Ingrid')
+    j = Character('Jacob')
+    
+    FamilialRelationship('Spouse', a, b)
+    FamilialRelationship('Spouse', b, a)
+    FamilialRelationship('Child', a, c)
+    FamilialRelationship('Child', b, c)
+    
+    FamilialRelationship('Spouse', d, e)
+    FamilialRelationship('Spouse', e, d)
+    FamilialRelationship('Child', d, f)
+    FamilialRelationship('Child', e, f)
+    
+    FamilialRelationship('Spouse', c, f)
+    FamilialRelationship('Spouse', f, c)
+    FamilialRelationship('Child', c, g)
+    FamilialRelationship('Child', f, g)
+    FamilialRelationship('Child', c, h)
+    FamilialRelationship('Child', f, h)
+    FamilialRelationship('Sibling', g, h)
+    FamilialRelationship('Sibling', h, g)
+    
+    FamilialRelationship('Child', e, i)
+    FamilialRelationship('Child', d, i)
+    
+    FamilialRelationship('Sibling', f, i)
+    FamilialRelationship('Sibling', i, f)
+    
+    Relationship((0,[]), 1, j, a)
+    Relationship((-1,[]), 0.5, j, b)
+    Relationship((1,[]), 1, j, c)
+    Relationship((0,[]), 0.01, j, d)
 
-FamilialRelationship('Spouse', d, e)
-FamilialRelationship('Spouse', e, d)
-FamilialRelationship('Child', d, f)
-FamilialRelationship('Child', e, f)
+#main()
 
-FamilialRelationship('Spouse', c, f)
-FamilialRelationship('Spouse', f, c)
-FamilialRelationship('Child', c, g)
-FamilialRelationship('Child', f, g)
-FamilialRelationship('Child', c, h)
-FamilialRelationship('Child', f, h)
-FamilialRelationship('Sibling', g, h)
-FamilialRelationship('Sibling', h, g)
-
-FamilialRelationship('Child', e, i)
-FamilialRelationship('Child', d, i)
-
-FamilialRelationship('Sibling', f, i)
-FamilialRelationship('Sibling', i, f)
-
-Relationship((0,[]), 1, j, a)
-Relationship((-1,[]), 0.5, j, b)
-Relationship((1,[]), 1, j, c)
-Relationship((0,[]), 0.01, j, d)
+a = Character(0)
+b = a.genGraph()

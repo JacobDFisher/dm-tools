@@ -18,19 +18,17 @@ def main():
         return
     if 'dest' not in form:
         try:
-            src = Character.Character.chars[form['src'].value]
-            for rels in src.relationships:
-                for rel in src.relationships[rels]:
-                    print('<p>'+str(rel)+'</p>')
+            src = Character.Character(int(form['src'].value))
+            for rel in src.relationships:
+                print('<p>'+str(src.relationships[rel])+'</p>')
+                print('<p>'+str(Character.Character.chars[rel].relationships[int(form['src'].value)]))
         except:
             pass
     else:
         try:
-            src = Character.Character.chars[form['src'].value]
-            dest = Character.Character.chars[form['dest'].value]
-            rels = src.relationships[dest]
-            for rel in rels:
-                print('<p>'+str(rel)+'</p>')
+            src = Character.Character(int(form['src'].value))
+            dest = Character.Character.chars[int(form['dest'].value)]
+            print('<p>'+str(src.relationships[dest.Id])+'</p>')
         except:
             pass
     print('</body></html>')
