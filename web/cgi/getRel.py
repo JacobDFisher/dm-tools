@@ -20,15 +20,18 @@ def main():
         try:
             src = Character.Character(int(form['src'].value))
             for rel in src.relationships:
-                print('<p>'+str(src.relationships[rel])+'</p>')
-                print('<p>'+str(Character.Character.chars[rel].relationships[int(form['src'].value)]))
+                print(src.relationships[rel].getHTML())
+                print(Character.Character.chars[rel].relationships[int(form['src'].value)].getHTML())
+                #print('<p>'+str(src.relationships[rel])+'</p>')
+                #print('<p>'+str(Character.Character.chars[rel].relationships[int(form['src'].value)]))
         except:
             pass
     else:
         try:
             src = Character.Character(int(form['src'].value))
             dest = Character.Character.chars[int(form['dest'].value)]
-            print('<p>'+str(src.relationships[dest.Id])+'</p>')
+            #print('<p>'+str(src.relationships[dest.Id])+'</p>')
+            print(src.relationships[dest.Id].getHTML())
         except:
             pass
     print('</body></html>')

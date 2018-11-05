@@ -3,6 +3,7 @@ import cgi, cgitb
 from subprocess import Popen, PIPE, STDOUT
 import Character
 import redis
+import re
 
 def main():
     form = cgi.FieldStorage()
@@ -56,11 +57,13 @@ def main():
     print('<div class="column" style="height:100%;">')
     print('<IMG SRC="/img/'+graphBytes[0]+'.png" USEMAP="#'+graphBytes[0]+'" />')
     print('<br /><a href="/cgi-bin/getRel.py?src='+form['id'].value+'" target="relationship">Show All</a>')
-    print(str(data[0], 'utf-8'))
+    print(re.sub('<area', '<area class="graphElem"',str(data[0], 'utf-8')))
     #print('<p>'+graphBytes[1].decode('utf-8')+'</p>')
     print('<p>'+str(data[1], 'utf-8')+'</p>')
     print('<iframe style="height:100%; width:100%" name=relationship src="/cgi-bin/getRel.py?src='+form['id'].value+'"></iframe>')
-    print('</div></body></html>')
+    print('</div>')
+    #print('<script src="/test.js"></script>')
+    print('</body></html>')
     return
 
 cgitb.enable(display=0, logdir="/var/dm-tools/web/logs")
