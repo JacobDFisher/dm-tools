@@ -3,7 +3,8 @@ from Relationship import Relationship, relTypes, FamilialRelationship
 
 class Character(object):
     chars = dict()
-    def __init__(self, Id=None, name=None, save=True):
+    danglingRels = dict()
+    def __init__(self, Id=None, name=None, save=True, depth=0):
         r = redis.StrictRedis(host='localhost', port=6379, db=0)
         if Id == None and name is not None:
             Id = r.hget('name2Id:0', name)
@@ -32,6 +33,8 @@ class Character(object):
             traits = r.hgetall('character:0:'+str(self.Id))
             for trait in traits.keys():
                 self.traits[trait.decode('utf-8')] = traits[trait].decode('utf-8')
+        else:
+            raise(Exception())
         #Set up traits here
         self.relationships = {}
         if r.exists('relationships:0:'+str(self.Id)):
@@ -40,9 +43,25 @@ class Character(object):
                 myRels = {}
                 if r.exists('relationship:0:'+str(self.Id)+':'+str(int(rel))):
                     relMems = r.hgetall('relationship:0:'+str(self.Id)+':'+str(int(rel)))
+                    if not r.exists('relVal:0:'+str(self.Id)+':'+str(int(rel))):
+                        r.hmset('relVal:0:'+str(self.Id)+':'+str(int(rel)), {key:0 for key in relMems})
+                    relVals = r.hgetall('relVal:0:'+str(self.Id)+':'+str(int(rel)))
                     for rMem in relMems.keys():
-                        myRels[rMem.decode('utf-8')] = float(relMems[rMem])
-                self.relationships[int(rel)] = Relationship(myRels, max(myRels.values()), self, Character.getById(int(rel)))
+                        myRels[rMem.decode('utf-8')] = (float(relMems[rMem]), float(relVals[rMem]))
+                try:
+                    self.relationships[int(rel)] = Relationship(myRels, max(myRels.values(), key=lambda x: x[0])[0], self, getById(int(rel), depth-1))
+                except:
+                    try:
+                        Character.danglingRels[int(rel)][self.Id] = dict(myRels)
+                    except:
+                        Character.danglingRels[int(rel)] = {self.Id: dict(myRels)}
+        if self.Id in Character.danglingRels:
+            for relId in Character.danglingRels[self.Id]:
+                try:
+                    rel = getById(relId)
+                    rel.relationships[self.Id] = Relationship(Character.danglingRels[self.Id][relId], max(Character.danglingRels[self.Id][relId].values(), key=lambda x: x[0])[0], rel, self)
+                except:
+                    pass
         if save:
             r.save()
 
@@ -61,31 +80,23 @@ class Character(object):
     def addRelation(self, other, relation, recip=True):
         r = redis.StrictRedis(host='localhost', port=6379, db=0)
         r.sadd('relationships:0:'+str(self.Id), str(other.Id))
-        r.hmset('relationship:0:'+str(self.Id)+':'+str(other.Id), relation)
+        relImp = {key:value[0] for (key,value) in relation.items()}
+        relVal = {key:value[1] for (key,value) in relation.items()}
+        r.hmset('relationship:0:'+str(self.Id)+':'+str(other.Id), relImp)
+        r.hmset('relVal:0:'+str(self.Id)+':'+str(other.Id), relVal)
         if other.Id in self.relationships:
             for key in relation:
                 self.relationships[other.Id].rels[key] = relation[key]
-                if relation[key] > self.relationships[other.Id].importance:
-                    self.relationships[other.Id].importance = relation[key]
+                if relation[key][0] > self.relationships[other.Id].importance:
+                    self.relationships[other.Id].importance = relation[key][0]
         else:
-            self.relationships[other.Id] = Relationship(relation, max(relation.values()), self, other)
+            self.relationships[other.Id] = Relationship(relation, max(relation.values(), key=lambda x: x[0])[0], self, other)
         if recip:
             for rel in relation:
                 try:
                     relTypes[rel]['recip'](self, other)
                 except:
                     continue
-
-    def getById(Id):
-        if Id in Character.chars:
-            return Character.chars[Id]
-        else:
-            return Character(Id)
-
-    def getByName(name):
-        r = redis.StrictRedis(host='localhost', port=6379, db=0)
-        Id = r.hget('name2Id:0', name)
-        return getCharById(Id)
 
     def genGraph(self, maxDepth = 1, URL='/cgi-bin/CharacterPage.py', target='_self'):
         graphString = 'digraph '+str(self)+'graph {\n\t{rank=same; '+str(self)+' }\n'
@@ -99,7 +110,7 @@ class Character(object):
             for key in keys:
                 charList[i].add(key)
                 #Check this
-                for k in Character.getById(key).relationships.keys():
+                for k in getById(key).relationships.keys():
                     nextKeys.add(k)
             charList[i].difference_update(charSet)
             charSet.update(charList[i])
@@ -110,18 +121,31 @@ class Character(object):
                 first = charList[i].pop()
             except:
                 break
-            graphString+='\t{rank=same; '+str(Character.getById(first))
+            graphString+='\t{rank=same; '+str(getById(first))
             for val in charList[i]:
-                graphString+=', '+str(Character.getById(val))
+                graphString+=', '+str(getById(val))
             graphString+='}\n'
-            graphString+='\t'+str(Character.getById(first))+';\n'
+            graphString+='\t'+str(getById(first))+';\n'
             for val in charList[i]:
-                graphString+='\t'+str(Character.getById(val))+';\n'
+                graphString+='\t'+str(getById(val))+';\n'
         for char in charSet:
-            graphString+=str(Character.getById(char))+'[URL="'+URL+'?id='+str(char)+'", target="'+target+'"];\n'
-            for dest in Character.getById(char).relationships:
+            graphString+=str(getById(char))+'[URL="'+URL+'?id='+str(char)+'", target="'+target+'"];\n'
+            for dest in getById(char).relationships:
                 if dest in charSet:
-                    if Character.getById(char).relationships[dest].src == Character.getById(char):
-                        graphString+='\t'+Character.getById(char).relationships[dest].graphGet()+';\n'
+                    if getById(char).relationships[dest].src == getById(char):
+                        graphString+='\t'+getById(char).relationships[dest].graphGet()+';\n'
         graphString+='}\n'
         return (str(self)+'graph', bytes(graphString, 'utf-8'))
+
+def getById(Id, depth=0):
+    if Id in Character.chars:
+        return Character.chars[Id]
+    elif depth<0:
+        raise(Exception("Max depth reached"))
+    else:
+        return Character(Id, depth=depth)
+
+def getByName(name, depth=0):
+    r = redis.StrictRedis(host='localhost', port=6379, db=0)
+    Id = int(r.hget('name2Id:0', name))
+    return getById(Id, depth)
