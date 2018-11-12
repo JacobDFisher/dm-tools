@@ -49,7 +49,7 @@ class Relationship(object):
             else:
                 retStr+='<li data-vis="visible" '+(not visible)*'style="display: none;"'+'>'
             retStr+=str(key)
-            retStr+=': (<span class="importance" data-src='+str(self.src.Id)
+            retStr+=': (<span style="cursor: pointer;" class="importance" data-src='+str(self.src.Id)
             retStr+=' data-dest='+str(self.dest.Id)
             retStr+=' data-type='+str(key)+'>'
             retStr+=str(self.rels[key][0])
@@ -60,7 +60,7 @@ class Relationship(object):
             retStr+=' data-rel='+str(key)
             retStr+=' data-value='+str(self.rels[key][0])
             retStr+=' value='+str(self.rels[key][0])+' />, '
-            retStr+='<span class="relVal" data-src='+str(self.src.Id)
+            retStr+='<span style="cursor: pointer;" class="relVal" data-src='+str(self.src.Id)
             retStr+=' data-dest='+str(self.dest.Id)
             retStr+=' data-type='+str(key)+'>'
             retStr+=str(self.rels[key][1])
