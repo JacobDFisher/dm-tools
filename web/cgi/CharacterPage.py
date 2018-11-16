@@ -63,7 +63,7 @@ def main():
     print(re.sub('id="edge', 'class="graphEdge" id="edge',str(data[0], 'utf-8')))
     #print('<p>'+graphBytes[1].decode('utf-8')+'</p>')
     print('<p>'+str(data[1], 'utf-8')+'</p>')
-    print('<object id="relationship" style="height:100%; width:100%" name=relationship data="/cgi-bin/getRel.py?src='+form['id'].value+'"></object>')
+    print('<object id="relationship" style="height:100%; width:100%" name=relationship data="/cgi-bin/getRel.py?&src='+form['id'].value+'"></object>')
     print('</div>')
     print('<div id="RelationshipUnderlay" style="cursor: pointer;"></div>')
     print('<div id="RelationshipOverlay"></div>')

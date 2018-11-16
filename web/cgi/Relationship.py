@@ -29,7 +29,7 @@ class Relationship(object):
 
     def graphGet(self, URL='/cgi-bin/getRel.py', target='relationship', style=False):
         fullURL = URL+'?src='+str(self.src.Id)+'&dest='+str(self.dest.Id)+'&recip=True&vis=True&max=25'
-        retStr = str(self.src)+'->'+str(self.dest)+' [len=1, edgeURL="'+fullURL+'", target="'+target+'", penwidth="'+str(max(1,2.5*self.importance))+'"'
+        retStr = str(self.src)+'->'+str(self.dest)+' [len=2, edgeURL="'+fullURL+'", target="'+target+'", penwidth="'+str(max(1,2.5*self.importance))+'"'
         if style:
             for val in self.style:
                 retStr+=', '+val+'="'+self.style[val]+'"'
