@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import cgi, cgitb
 from subprocess import Popen, PIPE, STDOUT
-import Character
+from Character import Character
 import redis
 import re
 
@@ -45,24 +45,40 @@ def main():
     #    print('<p>Character not found</p>')
     #    print('</body></html>')
     #    return
-    graphBytes = char.genGraph(maxDepth=depth)
-    p = Popen(['fdp', '-Tpng', '-o', '../img/'+graphBytes[0]+'.png', '-Tcmapx'], stdout=PIPE, stdin=PIPE, stderr=PIPE)
-    data = p.communicate(input=graphBytes[1])
-    p.wait()
+    #graphBytes = char.genGraph(maxDepth=depth)
+    #p = Popen(['fdp', '-Tpng', '-o', '../img/'+graphBytes[0]+'.png', '-Tcmapx'], stdout=PIPE, stdin=PIPE, stderr=PIPE)
+    #data = p.communicate(input=graphBytes[1])
+    #p.wait()
     print('<h2>'+str(char)+'</h2>')
     print('<div class="column" style="height:100%;">')
     print('<h3>'+str(char)+'\'s Traits</h3>')
-    for trait in char.traits:
-        print('<p>'+str(trait)+': '+str(char.traits[trait])+'</p>')
+    traits = char.getTraits()
+    for trait in traits:
+        if trait[:5]=='role:':
+            print('<h4>'+trait[5:]+'</h4>')
+            print('<ul>')
+            for each in traits[trait]:
+                print('<li>'+str(each)+': '+str(traits[trait][each])+'</li>')
+            print('</ul>')
+        else:
+            print('<p>'+str(trait)+': '+str(char.traits[trait])+'</p>')
+    print('<h3>'+str(char)+'\'s Expectations</h3>')
+    impTraits = char.getImpTraits()
+    for role in sorted(impTraits, key=impTraits.get, reverse=True):
+        print('<h4>'+str(role)+'</h4>')
+        print('<ul>')
+        for trait in impTraits[role]:
+            print('<li>'+str(trait)+': '+str(impTraits[role][trait])+'</li>')
+        print('</ul>')
     print('</div>')
     print('<div class="column" style="height:100%;">')
-    print('<IMG SRC="/img/'+graphBytes[0]+'.png" USEMAP="#'+graphBytes[0]+'" />')
+    #print('<IMG SRC="/img/'+graphBytes[0]+'.png" USEMAP="#'+graphBytes[0]+'" />')
     print('<br /><a class="showRels" href="/cgi-bin/getRel.py?src='+form['id'].value+'">Show All Relationships</a>')
     print('<a class="showRels" href="/cgi-bin/getRel.py?src='+form['id'].value+'&inOnly=1">Show Incoming</a>')
     print('<a class="showRels" href="/cgi-bin/getRel.py?src='+form['id'].value+'&outOnly=1">Show Outgoing</a>')
-    print(re.sub('id="edge', 'class="graphEdge" id="edge',str(data[0], 'utf-8')))
+    #print(re.sub('id="edge', 'class="graphEdge" id="edge',str(data[0], 'utf-8')))
     #print('<p>'+graphBytes[1].decode('utf-8')+'</p>')
-    print('<p>'+str(data[1], 'utf-8')+'</p>')
+    #print('<p>'+str(data[1], 'utf-8')+'</p>')
     print('<object id="relationship" style="height:100%; width:100%" name=relationship data="/cgi-bin/getRel.py?&src='+form['id'].value+'"></object>')
     print('</div>')
     print('<div id="RelationshipUnderlay" style="cursor: pointer;"></div>')
@@ -71,7 +87,7 @@ def main():
     print('</body></html>')
     return
 
-cgitb.enable(display=0, logdir="/var/dm-tools/web/logs")
+cgitb.enable(display=0, logdir="/home/jacob/Desktop/992/web/logs")
 
 main()
         

@@ -103,7 +103,7 @@ function showList(event){
     }
 }
 
-var elems, eLen, i;
+/*var elems, eLen, i;
 elems = document.getElementsByClassName("importance")
 eLen = elems.length;
 
@@ -132,9 +132,29 @@ eLen = elems.length;
 for (i=0; i<eLen; i++){
     elems[i].addEventListener("keyup", boxFilled);
     elems[i].addEventListener("focusout", boxLeft);
+}*/
+
+elems = document.getElementsByClassName("relView");
+eLen = elems.length;
+
+for (i=0; i<eLen; i++){
+    elems[i].addEventListener("click", showSibs);
+    me = elems[i];
+    sibs = me.parentNode.childNodes;
+    sibLen = sibs.length;
+    iSib = 0;
+    for (j=0; j<sibLen; j++){
+        if(sibs[j].tagName==='UL'){
+            iSib = sibs[j];
+            break;
+        }
+    }
+    if(iSib!=0){
+        iSib.addEventListener('show', showList);
+    }
 }
 
-elems = document.getElementsByClassName("relView")
+elems = document.getElementsByClassName("roleView");
 eLen = elems.length;
 
 for (i=0; i<eLen; i++){
